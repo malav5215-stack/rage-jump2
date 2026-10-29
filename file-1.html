@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RAGE JUMP: Just One More Try</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Main Game Container -->
+  <div id="gameContainer">
+    <!-- Canvas for 2D Game World -->
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <!-- Top In-Game HUD -->
+    <div id="gameHUD" class="hud-overlay hidden">
+      <div class="hud-left">
+        <span class="hud-badge level-badge" id="hudLevelName">Level 1: The Gentle Lie</span>
+      </div>
+      <div class="hud-center">
+        <div class="hud-stat" title="Total deaths on this level">
+          <span class="stat-icon">💀</span>
+          <span class="stat-label">DEATHS:</span>
+          <span class="stat-value" id="hudDeaths">0</span>
+        </div>
+        <div class="hud-stat" title="Elapsed level time">
+          <span class="stat-icon">⏱️</span>
+          <span class="stat-label">TIME:</span>
+          <span class="stat-value" id="hudTimer">00:00.0</span>
+        </div>
+        <div class="hud-stat" title="Current personal best for this level">
+          <span class="stat-icon">🏆</span>
+          <span class="stat-label">BEST:</span>
+          <span class="stat-value" id="hudBestTime">--:--.-</span>
+        </div>
+      </div>
+      <div class="hud-right">
+        <button id="btnSoundToggle" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">🔊</button>
+        <button id="btnQuickRestart" class="hud-btn" title="Restart Level (R)" aria-label="Restart Level">↺ <span class="key-hint">R</span></button>
+        <button id="btnPause" class="hud-btn" title="Pause Game (ESC)" aria-label="Pause Game">⏸ <span class="key-hint">ESC</span></button>
+      </div>
+    </div>
+
+    <!-- Death Quip Banner (Floating humorous rage message) -->
+    <div id="deathQuipBanner" class="death-quip-banner hidden">
+      <p id="deathQuipText">That jump looked easier in your head.</p>
+    </div>
+
+    <!-- Touch Controls for Mobile Devices -->
+    <div id="mobileControls" class="mobile-controls hidden">
+      <div class="touch-group touch-left">
+        <button id="touchLeft" class="touch-btn" aria-label="Move Left">◀</button>
+        <button id="touchRight" class="touch-btn" aria-label="Move Right">▶</button>
+      </div>
+      <div class="touch-group touch-right">
+        <button id="touchJump" class="touch-btn jump-btn" aria-label="Jump">▲ JUMP</button>
+      </div>
+    </div>
+
+    <!-- Toast Notification Banner (Used for clipboard copy, unlock notices, etc.) -->
+    <div id="toastNotification" class="toast-banner hidden">
+      <span id="toastIcon">✨</span>
+      <span id="toastMessage">Message goes here</span>
+    </div>
+
+    <!-- ==================== SCREENS & OVERLAYS ==================== -->
+
+    <!-- Title / Main Menu Screen -->
+    <div id="titleScreen" class="screen-overlay">
+      <div class="title-content">
+        <div class="brand-logo">
+          <div class="logo-badge">PRECISION PLATFORMER</div>
+          <h1 class="glitch-title" data-text="RAGE JUMP">RAGE JUMP</h1>
+          <p class="tagline">JUST ONE MORE TRY</p>
+        </div>
+
+        <div class="character-preview-card">
+          <canvas id="charPreviewCanvas" width="96" height="96"></canvas>
+          <div class="preview-info">
+            <span class="skin-name" id="currentSkinName">Neon Hero</span>
+            <button id="btnOpenSkins" class="btn-secondary small">🎨 Change Skin</button>
+          </div>
+        </div>
+
+        <div class="menu-buttons">
+          <button id="btnPlayGame" class="btn-primary pulse-btn">▶ PLAY CAMPAIGN</button>
+          <div class="button-row">
+            <button id="btnLevelSelect" class="btn-secondary">📋 Level Select</button>
+            <button id="btnDailyChallenge" class="btn-secondary daily-btn">📅 Daily Gauntlet</button>
+          </div>
+          <div class="button-row">
+            <button id="btnSettings" class="btn-secondary">⚙️ Settings</button>
+            <button id="btnHelp" class="btn-secondary">❓ How to Play</button>
+          </div>
+        </div>
+
+        <div class="menu-footer">
+          <div class="overall-stats">
+            <span>Overall Deaths: <strong id="menuTotalDeaths">0</strong></span>
+            <span>•</span>
+            <span>Levels Cleared: <strong id="menuLevelsCleared">0/5</strong></span>
+          </div>
+          <p class="sub-disclaimer">Challenging by design. Fair by code. Zero ads, zero accounts.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Select Modal -->
+    <div id="levelSelectModal" class="screen-overlay hidden">
+      <div class="modal-box large-modal">
+        <div class="modal-header">
+          <h2>SELECT LEVEL</h2>
+          <button class="btn-close modal-close-btn" data-target="levelSelectModal">&times;</button>
+        </div>
+        <div class="level-grid" id="levelGridContainer">
+          <!-- Dynamically generated via JavaScript -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close-btn" data-target="levelSelectModal">Back to Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Challenge Modal -->
+    <div id="dailyChallengeModal" class="screen-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>📅 DAILY GAUNTLET</h2>
+          <button class="btn-close modal-close-btn" data-target="dailyChallengeModal">&times;</button>
+        </div>
+        <div class="daily-info">
+          <div class="daily-date-badge" id="dailyDateBadge">TODAY'S SEED: 2026-10-29</div>
+          <p class="daily-desc">
+            A unique procedural gauntlet generated daily! Every player around the world faces the exact same traps and spikes today.
+          </p>
+          <div class="daily-stats-card">
+            <div class="stat-pill">
+              <span class="pill-label">Best Time</span>
+              <span class="pill-val" id="dailyBestTime">--:--.-</span>
+            </div>
+            <div class="stat-pill">
+              <span class="pill-label">Fewest Deaths</span>
+              <span class="pill-val" id="dailyBestDeaths">--</span>
+            </div>
+            <div class="stat-pill">
+              <span class="pill-label">Status</span>
+              <span class="pill-val" id="dailyStatus">Unconquered</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btnStartDaily" class="btn-primary">START TODAY'S GAUNTLET</button>
+          <button class="btn-secondary modal-close-btn" data-target="dailyChallengeModal">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skins / Customization Modal -->
+    <div id="skinsModal" class="screen-overlay hidden">
+      <div class="modal-box large-modal">
+        <div class="modal-header">
+          <h2>CHARACTER SKINS</h2>
+          <button class="btn-close modal-close-btn" data-target="skinsModal">&times;</button>
+        </div>
+        <p class="modal-subtitle">Unlock cosmetics through feats of skill and glorious rage.</p>
+        <div class="skins-grid" id="skinsGridContainer">
+          <!-- Dynamically generated via JavaScript -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close-btn" data-target="skinsModal">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause Menu Modal -->
+    <div id="pauseModal" class="screen-overlay hidden">
+      <div class="modal-box pause-modal">
+        <h2>GAME PAUSED</h2>
+        <p class="pause-tagline">Take a breath. The platform isn't moving anywhere.</p>
+        <div class="modal-buttons">
+          <button id="btnResume" class="btn-primary">▶ RESUME</button>
+          <button id="btnPauseRestart" class="btn-secondary">↺ Restart Level</button>
+          <button id="btnPauseSettings" class="btn-secondary">⚙️ Settings</button>
+          <button id="btnQuitToMenu" class="btn-secondary danger">🚪 Quit to Main Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Complete Modal -->
+    <div id="levelCompleteModal" class="screen-overlay hidden">
+      <div class="modal-box clear-modal">
+        <div class="victory-header">
+          <div class="confetti-icon">🎉</div>
+          <h2>LEVEL CLEARED!</h2>
+          <p id="levelClearSubtitle" class="modal-subtitle">You showed those spikes who's boss.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="result-card">
+            <span class="result-label">TIME</span>
+            <span class="result-value" id="clearTimeValue">00:45.2</span>
+            <span class="result-pb" id="clearTimePB">Personal Best!</span>
+          </div>
+          <div class="result-card">
+            <span class="result-label">DEATHS THIS RUN</span>
+            <span class="result-value" id="clearDeathsValue">12</span>
+            <span class="result-pb" id="clearDeathsPB">Record: 12</span>
+          </div>
+        </div>
+
+        <div class="modal-buttons">
+          <button id="btnNextLevel" class="btn-primary pulse-btn">NEXT LEVEL ▶</button>
+          <button id="btnReplayLevel" class="btn-secondary">↺ Play Again</button>
+          <button id="btnShareLevel" class="btn-secondary share-btn">📤 Share Score</button>
+          <button id="btnClearQuitMenu" class="btn-secondary">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final Game Victory Modal (Conquered Level 5) -->
+    <div id="victoryModal" class="screen-overlay hidden">
+      <div class="modal-box victory-modal">
+        <div class="trophy-banner">🏆👑🏆</div>
+        <h1 class="gold-title">YOU CONQUERED THE RAGE!</h1>
+        <p class="victory-tagline">Every spike avoided. Every trap memorized. You are a platforming god.</p>
+
+        <div class="victory-stats-box">
+          <div class="victory-stat-item">
+            <span class="stat-name">TOTAL TIME</span>
+            <span class="stat-number" id="victoryTotalTime">04:32.1</span>
+          </div>
+          <div class="victory-stat-item">
+            <span class="stat-name">TOTAL DEATHS</span>
+            <span class="stat-number" id="victoryTotalDeaths">74</span>
+          </div>
+          <div class="victory-stat-item">
+            <span class="stat-name">RAGE RANK</span>
+            <span class="stat-number rank-highlight" id="victoryRank">SALT MASTER</span>
+          </div>
+        </div>
+
+        <p class="victory-challenge">Can your friends survive the Gauntlet in fewer deaths?</p>
+
+        <div class="modal-buttons">
+          <button id="btnShareVictory" class="btn-primary share-btn pulse-btn">📤 SHARE VICTORY & BRAG</button>
+          <div class="button-row">
+            <button id="btnVictoryLevelSelect" class="btn-secondary">Level Select</button>
+            <button id="btnVictoryMainMenu" class="btn-secondary">Main Menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="screen-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>SETTINGS</h2>
+          <button class="btn-close modal-close-btn" data-target="settingsModal">&times;</button>
+        </div>
+        <div class="settings-list">
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-title">Sound Effects</span>
+              <span class="setting-desc">Original synthesized 8-bit audio</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingSound" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-title">Screen Shake</span>
+              <span class="setting-desc">Disable for reduced motion sensitivity</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingShake" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-title">Particles & Sparkles</span>
+              <span class="setting-desc">Visual debris on jumping and landing</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingParticles" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-title">On-Screen Touch Controls</span>
+              <span class="setting-desc">Mobile controls overlay</span>
+            </div>
+            <select id="settingTouch" class="setting-select">
+              <option value="auto">Auto (Touch Devices)</option>
+              <option value="always">Always Show</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="danger-zone">
+          <button id="btnResetData" class="btn-danger-outline">⚠️ Reset All Save Data & Records</button>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close-btn" data-target="settingsModal">Save & Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- How to Play / Guide Modal -->
+    <div id="helpModal" class="screen-overlay hidden">
+      <div class="modal-box large-modal">
+        <div class="modal-header">
+          <h2>HOW TO SURVIVE</h2>
+          <button class="btn-close modal-close-btn" data-target="helpModal">&times;</button>
+        </div>
+        <div class="help-grid">
+          <div class="help-card">
+            <h3>🎮 KEYBOARD CONTROLS</h3>
+            <ul class="control-list">
+              <li><kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd> : Move Left / Right</li>
+              <li><kbd>SPACE</kbd> / <kbd>W</kbd> / <kbd>↑</kbd> : Jump (Hold higher, tap shorter)</li>
+              <li><kbd>R</kbd> : Quick Restart Level</li>
+              <li><kbd>ESC</kbd> : Pause Game</li>
+              <li><kbd>M</kbd> : Mute / Unmute Audio</li>
+            </ul>
+          </div>
+          <div class="help-card">
+            <h3>📱 TOUCH CONTROLS</h3>
+            <p>On mobile phones and tablets, responsive left/right buttons appear on the bottom-left, and a large JUMP button on the bottom-right.</p>
+          </div>
+          <div class="help-card">
+            <h3>💡 PRO PLATFORMING TIPS</h3>
+            <ul class="tips-list">
+              <li><strong>Coyote Time:</strong> You can still jump for a split-second after walking off an edge.</li>
+              <li><strong>Jump Buffering:</strong> Pressing jump right before landing will execute automatically.</li>
+              <li><strong>Variable Jumps:</strong> Release the jump button early to execute low, controlled hops.</li>
+              <li><strong>Head Collision:</strong> Solid blocks will bump your head down. Time your trajectory!</li>
+            </ul>
+          </div>
+          <div class="help-card">
+            <h3>⚠️ HAZARD GUIDE</h3>
+            <ul class="tips-list">
+              <li><strong style="color: #ff3366;">Crimson Spikes:</strong> Instant death. Don't touch tips or sides.</li>
+              <li><strong style="color: #ff9900;">Crumbling Platforms:</strong> Stand on them, and they shatter within 0.4s!</li>
+              <li><strong style="color: #00f0ff;">Bounce Pads:</strong> Launches you high into the sky.</li>
+              <li><strong style="color: #39ff14;">Checkpoints:</strong> Reach the neon flag to respawn there on death.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close-btn" data-target="helpModal">Got It!</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main Game Logic Script -->
+  <script src="game.js"></script>
+</body>
+</html>
